@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Inserimento e Modifica Pokémon</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f0f2f5; 
+            color: #333;
+            padding: 40px; 
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px; }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .info-carta { flex-grow: 1; }
+        .info-carta strong { font-size: 1.2em; color: #111; }
+        .info-carta p { margin: 5px 0 0 0; color: #666; }
+        .controlli { display: flex; align-items: center; }
+        input { 
+            padding: 8px; 
+            width: 90px; 
+            margin-right: 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px;
+            font-size: 1em;
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 16px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        .stato-invio {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🃏 Pannello di Controllo DB Pokémon</h1>
+    <p>Questo pannello invia i dati direttamente al foglio <strong>FILTERED</strong> del tuo file su Google Drive.</p>
+    
+    <div id="lista-carte">
+        <div class="card">
+            <div class="info-carta">
+                <strong>ABOMASNOW</strong> (ASR TG01)
+                <p>Prezzo attuale nel DB: <span id="prezzo-attuale">1.00</span> €</p>
+            </div>
+            <div class="controlli">
+                <input type="number" id="nuovo-prezzo" step="0.1" value="1.50">
+                <button onclick="inviaModificaAGoogleDrive('ABOMASNOW')">Aggiorna Prezzo</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notifica" class="stato-invio"></div>
+
+    <script>
+        // Il tuo URL personale di Google Apps Script (il ponte sicuro verso il tuo Drive)
+        const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbwB8EzKddlU1nwwqNpwzg3snm0T8KQnTWTlKjH2snyp774CLmKbh4mlyZFezJF5r05J/exec";
+
+        async function inviaModificaAGoogleDrive(nomeCarta) {
+            const prezzoValore = document.getElementById('nuovo-prezzo').value;
+            const notifica = document.getElementById('notifica');
+            
+            // Pacchetto dati da sparare a Google Drive
+            const datiDaInviare = {
+                nomeCarta: nomeCarta,
+                nuovoPrezzo: parseFloat(prezzoValore)
+            };
+
+            // Mostra un messaggio visivo di caricamento sulla pagina
+            notifica.style.display = "block";
+            notifica.style.background = "#fff3cd";
+            notifica.style.color = "#856404";
+            notifica.innerText = "Invio della modifica a Google Drive in corso...";
+
+            try {
+                // Spariamo il dato su internet verso l'App Web di Google
+                await fetch(URL_API_GOOGLE, {
+                    method: 'POST',
+                    mode: 'no-cors', // Evita i blocchi di sicurezza dei browser
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(datiDaInviare)
+                });
+
+                // Cambia il messaggio quando l'invio è completato
+                notifica.style.background = "#d4edda";
+                notifica.style.color = "#155724";
+                notifica.innerText = "Richiesta inviata! Verifica il tuo Google Sheet, Abomasnow cambierà prezzo tra pochi istanti.";
+                
+                // Aggiorna la grafica del sito al volo
+                document.getElementById('prezzo-attuale').innerText = prezzoValore;
+                
+            } catch (error) {
+                console.error("Errore riscontrato:", error);
+                notifica.style.background = "#f8d7da";
+                notifica.style.color = "#721c24";
+                notifica.innerText = "Errore durante l'invio dei dati.";
+            }
+        }
+    </script>
+</body>
+</html>
