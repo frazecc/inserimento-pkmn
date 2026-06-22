@@ -84,16 +84,27 @@
             border-radius: 20px;
             font-size: 0.8em;
         }
+
+        .stato-invio {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: bold;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
     <h1>🃏 Inserimento Rapido Collezione</h1>
     
+    <div id="notifica" class="stato-invio"></div>
+
     <div class="box-inserimento">
         <div class="input-group">
             <label for="input-testo">Digita il testo della carta e premi Invio:</label>
-            <input type="text" id="input-testo" placeholder="Es: Abomasnow ASR TG01 ITA NM..." autofocus>
+            <input type="text" id="input-testo" placeholder="Inserisci il testo qui..." autofocus>
         </div>
         <button class="btn-fine" onclick="finalizzaInserimento()">Fase di inserimento terminata</button>
     </div>
@@ -105,10 +116,10 @@
     </div>
 
     <script>
-        // Array in memoria JavaScript per salvare temporaneamente le stringhe digitate
+        // Array temporaneo in memoria browser
         let elencoCarte = [];
 
-        // Intercettiamo la pressione del tasto Invio nella cella di testo
+        // Intercetta la pressione del tasto Invio
         document.getElementById('input-testo').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 aggiungiCarta();
@@ -119,36 +130,64 @@
             const input = document.getElementById('input-testo');
             const testo = input.value.trim();
 
-            // Evitiamo di inserire righe vuote
             if (testo === "") return;
 
-            // Salviamo il testo nell'elenco in memoria
             elencoCarte.push(testo);
 
-            // Aggiorniamo la lista visiva a schermo (mostrando l'ultima inserita in fondo)
             const lista = document.getElementById('elenco-temporaneo');
             const nuovoElemento = document.createElement('li');
             nuovoElemento.textContent = testo;
             lista.appendChild(nuovoElemento);
 
-            // Aggiorniamo il contatore dei pacchetti inseriti
             document.getElementById('badge-conteggio').innerText = elencoCarte.length;
 
-            // Svuotiamo la cella di input per renderla pronta al prossimo inserimento
             input.value = "";
             input.focus();
         }
 
-        // Funzione attivata dal tasto verde di fine fase
-        function finalizzaInserimento() {
+        // Spedisce tutto l'elenco accumulato al foglio "CODICI INSERITI"
+        async function finalizzaInserimento() {
             if (elencoCarte.length === 0) {
-                alert("Non hai inserito nessuna carta in questa sessione.");
+                alert("Non hai inserito alcuna carta in questa sessione.");
                 return;
             }
             
-            // Per ora mandiamo solo un avviso, pronti a collegare la logica del punto 3
-            alert(`Fase terminata! Hai inserito ${elencoCarte.length} stringhe. Pronto per il confronto con il DB Generale.`);
-            console.log("Dati pronti per il confronto:", elencoCarte);
+            const notifica = document.getElementById('notifica');
+            notifica.style.display = "block";
+            notifica.style.background = "#fff3cd";
+            notifica.style.color = "#856404";
+            notifica.innerText = `Salvataggio di ${elencoCarte.length} elementi su Google Drive in corso...`;
+
+            // Il tuo NUOVO URL dell'App Web aggiornato
+            const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyk9JIavd03rNPWNXsZbb88Lik2W6BhkTHrE0cs4JxHdgV5sfqRByu3fM61XQFk4_21ww/exec";
+
+            try {
+                // Inviamo l'intero pacchetto in un colpo solo
+                await fetch(URL_API_GOOGLE, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ carte: elencoCarte })
+                });
+
+                // Aggiorna l'interfaccia a salvataggio completato
+                notifica.style.background = "#d4edda";
+                notifica.style.color = "#155724";
+                notifica.innerText = "🎉 Dati salvati con successo nella pagina 'CODICI INSERITI'!";
+                
+                // Svuota l'elenco temporaneo pronto per una nuova sessione
+                elencoCarte = [];
+                document.getElementById('elenco-temporaneo').innerHTML = "";
+                document.getElementById('badge-conteggio').innerText = "0";
+                
+            } catch (error) {
+                console.error("Errore riscontrato:", error);
+                notifica.style.background = "#f8d7da";
+                notifica.style.color = "#721c24";
+                notifica.innerText = "❌ Errore critico durante il salvataggio dei dati.";
+            }
         }
     </script>
 </body>
