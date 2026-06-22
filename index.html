@@ -2,124 +2,153 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Inserimento e Modifica Pokémon</title>
+    <title>Inserimento Pokémon</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: #f0f2f5; 
             color: #333;
             padding: 40px; 
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
         }
-        h1 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px; }
-        .card { 
-            background: white; 
-            padding: 20px; 
-            margin: 20px 0; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
+        h1 { color: #0056b3; text-align: center; margin-bottom: 30px; }
+        
+        .box-inserimento {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
         }
-        .info-carta { flex-grow: 1; }
-        .info-carta strong { font-size: 1.2em; color: #111; }
-        .info-carta p { margin: 5px 0 0 0; color: #666; }
-        .controlli { display: flex; align-items: center; }
-        input { 
-            padding: 8px; 
-            width: 90px; 
-            margin-right: 12px; 
-            border: 1px solid #ccc; 
-            border-radius: 6px;
-            font-size: 1em;
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-        button { 
-            background: #007bff; 
+        
+        label { font-weight: bold; color: #555; }
+        
+        input[type="text"] { 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px;
+            font-size: 1.1em;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
+        }
+        
+        .btn-fine {
+            width: 100%;
+            background: #28a745; 
             color: white; 
             border: none; 
-            padding: 10px 16px; 
-            border-radius: 6px; 
+            padding: 12px; 
+            border-radius: 8px; 
             cursor: pointer; 
             font-weight: bold;
+            font-size: 1.1em;
             transition: background 0.2s;
         }
-        button:hover { background: #0056b3; }
-        .stato-invio {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 6px;
-            display: none;
-            font-weight: bold;
+        .btn-fine:hover { background: #218838; }
+
+        .sezione-elenco {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        .sezione-elenco h3 { margin-top: 0; color: #444; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        ol { padding-left: 20px; margin: 0; }
+        
+        li { 
+            padding: 8px 0; 
+            border-bottom: 1px solid #f0f0f0; 
+            font-size: 1.05em; 
+            word-break: break-word;
+        }
+        li:last-child { border-bottom: none; }
+        
+        .contatore {
+            float: right;
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.8em;
         }
     </style>
 </head>
 <body>
 
-    <h1>🃏 Pannello di Controllo DB Pokémon</h1>
-    <p>Questo pannello invia i dati direttamente al foglio <strong>FILTERED</strong> del tuo file su Google Drive.</p>
+    <h1>🃏 Inserimento Rapido Collezione</h1>
     
-    <div id="lista-carte">
-        <div class="card">
-            <div class="info-carta">
-                <strong>ABOMASNOW</strong> (ASR TG01)
-                <p>Prezzo attuale nel DB: <span id="prezzo-attuale">1.00</span> €</p>
-            </div>
-            <div class="controlli">
-                <input type="number" id="nuovo-prezzo" step="0.1" value="1.50">
-                <button onclick="inviaModificaAGoogleDrive('ABOMASNOW')">Aggiorna Prezzo</button>
-            </div>
+    <div class="box-inserimento">
+        <div class="input-group">
+            <label for="input-testo">Digita il testo della carta e premi Invio:</label>
+            <input type="text" id="input-testo" placeholder="Es: Abomasnow ASR TG01 ITA NM..." autofocus>
         </div>
+        <button class="btn-fine" onclick="finalizzaInserimento()">Fase di inserimento terminata</button>
     </div>
 
-    <div id="notifica" class="stato-invio"></div>
+    <div class="sezione-elenco">
+        <h3>Carte Inserite in questa sessione <span id="badge-conteggio" class="contatore">0</span></h3>
+        <ol id="elenco-temporaneo">
+            </ol>
+    </div>
 
     <script>
-        // Il tuo URL personale di Google Apps Script (il ponte sicuro verso il tuo Drive)
-        const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbwB8EzKddlU1nwwqNpwzg3snm0T8KQnTWTlKjH2snyp774CLmKbh4mlyZFezJF5r05J/exec";
+        // Array in memoria JavaScript per salvare temporaneamente le stringhe digitate
+        let elencoCarte = [];
 
-        async function inviaModificaAGoogleDrive(nomeCarta) {
-            const prezzoValore = document.getElementById('nuovo-prezzo').value;
-            const notifica = document.getElementById('notifica');
-            
-            // Pacchetto dati da sparare a Google Drive
-            const datiDaInviare = {
-                nomeCarta: nomeCarta,
-                nuovoPrezzo: parseFloat(prezzoValore)
-            };
-
-            // Mostra un messaggio visivo di caricamento sulla pagina
-            notifica.style.display = "block";
-            notifica.style.background = "#fff3cd";
-            notifica.style.color = "#856404";
-            notifica.innerText = "Invio della modifica a Google Drive in corso...";
-
-            try {
-                // Spariamo il dato su internet verso l'App Web di Google
-                await fetch(URL_API_GOOGLE, {
-                    method: 'POST',
-                    mode: 'no-cors', // Evita i blocchi di sicurezza dei browser
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(datiDaInviare)
-                });
-
-                // Cambia il messaggio quando l'invio è completato
-                notifica.style.background = "#d4edda";
-                notifica.style.color = "#155724";
-                notifica.innerText = "Richiesta inviata! Verifica il tuo Google Sheet, Abomasnow cambierà prezzo tra pochi istanti.";
-                
-                // Aggiorna la grafica del sito al volo
-                document.getElementById('prezzo-attuale').innerText = prezzoValore;
-                
-            } catch (error) {
-                console.error("Errore riscontrato:", error);
-                notifica.style.background = "#f8d7da";
-                notifica.style.color = "#721c24";
-                notifica.innerText = "Errore durante l'invio dei dati.";
+        // Intercettiamo la pressione del tasto Invio nella cella di testo
+        document.getElementById('input-testo').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                aggiungiCarta();
             }
+        });
+
+        function aggiungiCarta() {
+            const input = document.getElementById('input-testo');
+            const testo = input.value.trim();
+
+            // Evitiamo di inserire righe vuote
+            if (testo === "") return;
+
+            // Salviamo il testo nell'elenco in memoria
+            elencoCarte.push(testo);
+
+            // Aggiorniamo la lista visiva a schermo (mostrando l'ultima inserita in fondo)
+            const lista = document.getElementById('elenco-temporaneo');
+            const nuovoElemento = document.createElement('li');
+            nuovoElemento.textContent = testo;
+            lista.appendChild(nuovoElemento);
+
+            // Aggiorniamo il contatore dei pacchetti inseriti
+            document.getElementById('badge-conteggio').innerText = elencoCarte.length;
+
+            // Svuotiamo la cella di input per renderla pronta al prossimo inserimento
+            input.value = "";
+            input.focus();
+        }
+
+        // Funzione attivata dal tasto verde di fine fase
+        function finalizzaInserimento() {
+            if (elencoCarte.length === 0) {
+                alert("Non hai inserito nessuna carta in questa sessione.");
+                return;
+            }
+            
+            // Per ora mandiamo solo un avviso, pronti a collegare la logica del punto 3
+            alert(`Fase terminata! Hai inserito ${elencoCarte.length} stringhe. Pronto per il confronto con il DB Generale.`);
+            console.log("Dati pronti per il confronto:", elencoCarte);
         }
     </script>
 </body>
