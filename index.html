@@ -187,10 +187,16 @@
                     <label>Codice</label>
                     <input type="text" id="w-codice">
                 </div>
+                
                 <div class="input-group">
                     <label>Posizione</label>
                     <input type="text" id="w-posizione">
                 </div>
+                <div class="input-group">
+                    <label>Quantità</label>
+                    <input type="text" id="w-quantita">
+                </div>
+                
                 <div class="input-group">
                     <label>Lingua</label>
                     <input type="text" id="w-lingua">
@@ -198,10 +204,6 @@
                 <div class="input-group">
                     <label>Condizione</label>
                     <input type="text" id="w-condiz">
-                </div>
-                <div class="input-group">
-                    <label>Prezzo</label>
-                    <input type="text" id="w-prezzo">
                 </div>
                 <div class="input-group" style="grid-column: span 2;">
                     <label>Link / Risorsa Esterna</label>
@@ -211,7 +213,11 @@
                     </div>
                     <span class="scorciatoia-info">Puoi anche usare la combinazione rapida <strong>CTRL + Q</strong> in qualsiasi momento per aprire questo collegamento</span>
                 </div>
-                <div class="input-group" style="grid-column: span 2;">
+                <div class="input-group">
+                    <label>Prezzo</label>
+                    <input type="text" id="w-prezzo">
+                </div>
+                <div class="input-group">
                     <label>Note</label>
                     <input type="text" id="w-note">
                 </div>
@@ -450,11 +456,12 @@
                 document.getElementById('w-nome').value = "";
                 document.getElementById('w-codice').value = item.entry;
                 document.getElementById('w-posizione').value = "";
+                document.getElementById('w-quantita').value = "";
                 document.getElementById('w-lingua').value = "";
                 document.getElementById('w-condiz').value = "";
                 document.getElementById('w-prezzo').value = "";
                 document.getElementById('w-note').value = "";
-                document.getElementById('w-proprietario').value = utenteSelezionato;
+                document.getElementById('w-proprietario').value = utenteSelezionato; 
                 
                 const inputLink = document.getElementById('w-link');
                 const btnLink = document.getElementById('btn-link-cliccabile');
@@ -469,6 +476,7 @@
             document.getElementById('w-nome').value = datiVariante.nome || "";
             document.getElementById('w-codice').value = datiVariante.codice || "";
             document.getElementById('w-posizione').value = datiVariante.posizione || "";
+            document.getElementById('w-quantita').value = datiVariante.quantita || "";
             document.getElementById('w-lingua').value = datiVariante.lingua || "";
             document.getElementById('w-condiz').value = datiVariante.condiz || "";
             document.getElementById('w-prezzo').value = datiVariante.prezzo || "";
@@ -493,6 +501,7 @@
                 nome: document.getElementById('w-nome').value.trim(),
                 codice: document.getElementById('w-codice').value.trim(),
                 posizione: document.getElementById('w-posizione').value.trim(),
+                quantita: document.getElementById('w-quantita').value.trim(),
                 lingua: document.getElementById('w-lingua').value.trim(),
                 condiz: document.getElementById('w-condiz').value.trim(),
                 link: document.getElementById('w-link').value.trim(),
