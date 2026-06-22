@@ -43,6 +43,12 @@
         }
         input[type="text"]:focus, select:focus { border-color: #007bff; }
         
+        /* Layout per Input + Pulsante Aggiungi */
+        .inserimento-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
         .container-selettore-duplicati {
             background: #fff3cd;
             border: 2px solid #ffeeba;
@@ -105,6 +111,20 @@
             transition: background 0.2s;
         }
         .btn-primary:hover { background: #0056b3; }
+
+        /* Stile pulsante Indietro */
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.05em;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover { background: #5a6268; }
         
         ol { padding-left: 20px; margin: 0; }
         li { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 1.05em; }
@@ -125,7 +145,7 @@
 
         .grid-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         @media (max-width: 600px) { .grid-campi { grid-template-columns: 1fr; } }
-        .wizard-footer { display: flex; justify-content: flex-end; border-top: 2px solid #f0f0f0; padding-top: 15px; margin-top: 20px; }
+        .wizard-footer { display: flex; justify-content: space-between; border-top: 2px solid #f0f0f0; padding-top: 15px; margin-top: 20px; }
         
         .info-utente-corrente { text-align: right; font-size: 0.9em; color: #6c757d; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
     </style>
@@ -152,8 +172,11 @@
         <div class="info-utente-corrente">Utente attivo: <span id="label-utente-attivo" style="color:#007bff;">-</span></div>
         <div class="box-standard">
             <div class="input-group">
-                <label for="input-testo">Digita il testo della carta e premi Invio:</label>
-                <input type="text" id="input-testo" placeholder="Inserisci il testo qui...">
+                <label for="input-testo">Digita il testo della carta e aggiungilo:</label>
+                <div class="inserimento-wrapper">
+                    <input type="text" id="input-testo" placeholder="Inserisci il testo qui...">
+                    <button class="btn-primary" onclick="aggiungiCarta()">Aggiungi ➕</button>
+                </div>
             </div>
             <button class="btn-green" onclick="avviaVerificaDati()">Fase di inserimento terminata e verifica DB</button>
         </div>
@@ -228,6 +251,7 @@
             </div>
 
             <div class="wizard-footer">
+                <button class="btn-secondary" id="btn-wizard-indietro" onclick="wizardIndietro()" style="visibility: hidden;">⬅️ Indietro</button>
                 <button class="btn-primary" id="btn-wizard-avanti" onclick="wizardAvanti()">Avanti ➡️</button>
             </div>
         </div>
@@ -438,15 +462,28 @@
                 boxDuplicati.style.display = "none";
             }
 
-            caricaCampiInput(item.oppureScegli[0]);
-
-            const btn = document.getElementById('btn-wizard-avanti');
-            if (indice === risultatiElaborati.length - 1) {
-                btn.innerText = "Finalizza e Salva su Foglio Google 💾";
-                btn.style.background = "#28a745";
+            // Gestione visibilità pulsante indietro
+            const btnIndietro = document.getElementById('btn-wizard-indietro');
+            if (indice > 0) {
+                btnIndietro.style.visibility = "visible";
             } else {
-                btn.innerText = "Avanti ➡️";
-                btn.style.background = "#007bff";
+                btnIndietro.style.visibility = "hidden";
+            }
+
+            // Se l'utente sta tornando indietro, ripopola con i vecchi dati salvati, altrimenti carica quelli di default
+            if (datiFinalizzatiPerDB[indice]) {
+                caricaCampiInput(datiFinalizzatiPerDB[indice]);
+            } else {
+                caricaCampiInput(item.oppureScegli[0]);
+            }
+
+            const btnAvanti = document.getElementById('btn-wizard-avanti');
+            if (indice === risultatiElaborati.length - 1) {
+                btnAvanti.innerText = "Finalizza e Salva su Foglio Google 💾";
+                btnAvanti.style.background = "#28a745";
+            } else {
+                btnAvanti.innerText = "Avanti ➡️";
+                btnAvanti.style.background = "#007bff";
             }
         }
 
@@ -456,7 +493,7 @@
                 document.getElementById('w-nome').value = "";
                 document.getElementById('w-codice').value = item.entry;
                 document.getElementById('w-posizione').value = "";
-                document.getElementById('w-quantita').value = "";
+                document.getElementById('w-quantita').value = "1"; // FORZATURA DEFAULT A 1
                 document.getElementById('w-lingua').value = "";
                 document.getElementById('w-condiz').value = "";
                 document.getElementById('w-prezzo').value = "";
@@ -476,7 +513,10 @@
             document.getElementById('w-nome').value = datiVariante.nome || "";
             document.getElementById('w-codice').value = datiVariante.codice || "";
             document.getElementById('w-posizione').value = datiVariante.posizione || "";
-            document.getElementById('w-quantita').value = datiVariante.quantita || "";
+            
+            // IMPOSTAZIONE QUANTITÀ A 1 DI DEFAULT (sia se vuoto, sia se proviene dal DB)
+            document.getElementById('w-quantita').value = "1";
+            
             document.getElementById('w-lingua').value = datiVariante.lingua || "";
             document.getElementById('w-condiz').value = datiVariante.condiz || "";
             document.getElementById('w-prezzo').value = datiVariante.prezzo || "";
@@ -510,7 +550,8 @@
                 proprietario: document.getElementById('w-proprietario').value.trim()
             };
             
-            datiFinalizzatiPerDB.push(rigaCompilata);
+            // Salva o sovrascrive i dati all'indice corrente
+            datiFinalizzatiPerDB[indiceCorrente] = rigaCompilata;
             indiceCorrente++;
             salvaBackupLocale();
             
@@ -518,6 +559,15 @@
                 mostraElementoWizard(indiceCorrente);
             } else {
                 inviaDatiFinaliAGoogle();
+            }
+        }
+
+        // NUOVA FUNZIONE PER TORNARE INDIETRO
+        function wizardIndietro() {
+            if (indiceCorrente > 0) {
+                indiceCorrente--;
+                salvaBackupLocale();
+                mostraElementoWizard(indiceCorrente);
             }
         }
 
