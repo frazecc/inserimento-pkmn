@@ -111,7 +111,6 @@
         .contatore { float: right; background: #007bff; color: white; padding: 2px 8px; border-radius: 20px; font-size: 0.8em; }
         .stato-notifica { margin-bottom: 20px; padding: 15px; border-radius: 8px; display: none; font-weight: bold; text-align: center; }
 
-        /* Blocchi sezioni */
         #sezione-login { display: block; }
         #sezione-inserimento { display: none; }
         .wizard-container { display: none; }
@@ -137,7 +136,6 @@
     
     <div id="notifica" class="stato-notifica"></div>
 
-    <!-- FASE 0: CHI SEI? -->
     <div id="sezione-login">
         <div class="box-standard" style="text-align: center;">
             <div class="input-group">
@@ -150,7 +148,6 @@
         </div>
     </div>
 
-    <!-- FASE 1: INSERIMENTO TEXT -->
     <div id="sezione-inserimento">
         <div class="info-utente-corrente">Utente attivo: <span id="label-utente-attivo" style="color:#007bff;">-</span></div>
         <div class="box-standard">
@@ -167,7 +164,6 @@
         </div>
     </div>
 
-    <!-- FASE 2: WIZARD POPUP COMPILAZIONE -->
     <div id="sezione-wizard" class="wizard-container">
         <div class="wizard-card">
             <div class="wizard-header">
@@ -177,7 +173,6 @@
             
             <div id="wizard-badge-stato" class="badge-stato">Stato</div>
 
-            <!-- CONTENITORE SELETTORE DINAMICO PER MULTIPLE CORRISPONDENZE -->
             <div id="box-duplicati" class="container-selettore-duplicati">
                 <label for="select-varianti">⚠️ Rilevate più corrispondenze nel DB! Scegli quale usare:</label>
                 <select id="select-varianti" onchange="cambiaVarianteSelezionata(this.value)"></select>
@@ -193,12 +188,20 @@
                     <input type="text" id="w-codice">
                 </div>
                 <div class="input-group">
+                    <label>Posizione</label>
+                    <input type="text" id="w-posizione">
+                </div>
+                <div class="input-group">
                     <label>Lingua</label>
                     <input type="text" id="w-lingua">
                 </div>
                 <div class="input-group">
                     <label>Condizione</label>
                     <input type="text" id="w-condiz">
+                </div>
+                <div class="input-group">
+                    <label>Prezzo</label>
+                    <input type="text" id="w-prezzo">
                 </div>
                 <div class="input-group" style="grid-column: span 2;">
                     <label>Link / Risorsa Esterna</label>
@@ -208,11 +211,7 @@
                     </div>
                     <span class="scorciatoia-info">Puoi anche usare la combinazione rapida <strong>CTRL + Q</strong> in qualsiasi momento per aprire questo collegamento</span>
                 </div>
-                <div class="input-group">
-                    <label>Prezzo</label>
-                    <input type="text" id="w-prezzo">
-                </div>
-                <div class="input-group">
+                <div class="input-group" style="grid-column: span 2;">
                     <label>Note</label>
                     <input type="text" id="w-note">
                 </div>
@@ -263,11 +262,10 @@
         });
 
         window.addEventListener('load', function() {
-            // Carica la lista dei nomi all'avvio del sito
             caricaListaNomiIniziale();
 
             if(localStorage.getItem('wizard_backup_risultati')) {
-                if(confirm("È stato trovato un lavoro di verifica non completato. Vuoi riprendere da dare avevi lasciato?")) {
+                if(confirm("È stato trovato un lavoro di verifica non completato. Vuoi riprendere da dove avevi lasciato?")) {
                     risultatiElaborati = JSON.parse(localStorage.getItem('wizard_backup_risultati'));
                     indiceCorrente = parseInt(localStorage.getItem('wizard_backup_indice')) || 0;
                     datiFinalizzatiPerDB = JSON.parse(localStorage.getItem('wizard_backup_dati_salvati')) || [];
@@ -451,11 +449,12 @@
             if (valore === "nessuna") {
                 document.getElementById('w-nome').value = "";
                 document.getElementById('w-codice').value = item.entry;
+                document.getElementById('w-posizione').value = "";
                 document.getElementById('w-lingua').value = "";
                 document.getElementById('w-condiz').value = "";
                 document.getElementById('w-prezzo').value = "";
                 document.getElementById('w-note').value = "";
-                document.getElementById('w-proprietario').value = utenteSelezionato; // Mantiene l'utente selezionato all'inizio
+                document.getElementById('w-proprietario').value = utenteSelezionato;
                 
                 const inputLink = document.getElementById('w-link');
                 const btnLink = document.getElementById('btn-link-cliccabile');
@@ -469,12 +468,12 @@
         function caricaCampiInput(datiVariante) {
             document.getElementById('w-nome').value = datiVariante.nome || "";
             document.getElementById('w-codice').value = datiVariante.codice || "";
+            document.getElementById('w-posizione').value = datiVariante.posizione || "";
             document.getElementById('w-lingua').value = datiVariante.lingua || "";
             document.getElementById('w-condiz').value = datiVariante.condiz || "";
             document.getElementById('w-prezzo').value = datiVariante.prezzo || "";
             document.getElementById('w-note').value = datiVariante.note || "";
             
-            // SOVRASCRITTURA FORZATA: Usa l'utente selezionato all'inizio invece dei dati del database
             document.getElementById('w-proprietario').value = utenteSelezionato; 
             
             const urlCorrente = datiVariante.link || "";
@@ -493,6 +492,7 @@
             const rigaCompilata = {
                 nome: document.getElementById('w-nome').value.trim(),
                 codice: document.getElementById('w-codice').value.trim(),
+                posizione: document.getElementById('w-posizione').value.trim(),
                 lingua: document.getElementById('w-lingua').value.trim(),
                 condiz: document.getElementById('w-condiz').value.trim(),
                 link: document.getElementById('w-link').value.trim(),
@@ -541,7 +541,6 @@
                     
                     setTimeout(() => {
                         notifica.style.display = "none";
-                        // Torna alla schermata di inserimento mantenendo lo stesso utente loggato
                         document.getElementById('sezione-inserimento').style.display = "block";
                     }, 5000);
                 } else {
@@ -568,8 +567,6 @@
             localStorage.removeItem('wizard_backup_risultati');
             localStorage.removeItem('wizard_backup_indice');
             localStorage.removeItem('wizard_backup_dati_salvati');
-            // Manteniamo volutamente l'utente memorizzato se si rinfresca la pagina per errore, 
-            // ma l'utente viene azzerato solo se si decide di scartare il backup.
             localStorage.removeItem('wizard_backup_utente');
         }
     </script>
