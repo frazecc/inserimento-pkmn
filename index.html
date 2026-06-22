@@ -43,6 +43,38 @@
         }
         input[type="text"]:focus { border-color: #007bff; }
         
+        /* Stile speciale per il gruppo del Link */
+        .link-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn-open-link {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            white-space: nowrap;
+            font-size: 0.95em;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 44px;
+            box-sizing: border-box;
+        }
+        .btn-open-link:hover { background: #138496; }
+        .scorciatoia-info {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        
         .btn-green {
             width: 100%;
             background: #28a745; 
@@ -183,7 +215,11 @@
                 </div>
                 <div class="input-group" style="grid-column: span 2;">
                     <label>Link / Risorsa Esterna</label>
-                    <input type="text" id="w-link">
+                    <div class="link-input-wrapper">
+                        <input type="text" id="w-link" placeholder="http://...">
+                        <a href="#" id="btn-link-cliccabile" target="_blank" class="btn-open-link">Apri Link 🔗</a>
+                    </div>
+                    <span class="scorciatoia-info">Puoi anche usare la combinazione rapida <strong>CTRL + Q</strong> in qualsiasi momento per aprire questo collegamento</span>
                 </div>
                 <div class="input-group">
                     <label>Prezzo</label>
@@ -212,6 +248,28 @@
         let datiFinalizzatiPerDB = [];
         
         const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyk9JIavd03rNPWNXsZbb88Lik2W6BhkTHrE0cs4JxHdgV5sfqRByu3fM61XQFk4_21ww/exec";
+
+        // INTERCETTAZIONE UNIVERSALE TASTI RAPIDI (CTRL + Q)
+        window.addEventListener('keydown', function(e) {
+            // Controlliamo se la sezione del Wizard è attiva e visibile
+            const wizardVisibile = document.getElementById('sezione-wizard').style.display === "block";
+            
+            if (wizardVisibile && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
+                e.preventDefault();  // Blocca categoricamente l'azione predefinita del browser
+                e.stopPropagation(); // Impedisce la propagazione del comando a livello di sistema
+                
+                apriLinkCorrente();
+            }
+        }, true); // Il parametro "true" forza la cattura dell'evento prima di chiunque altro
+
+        function apriLinkCorrente() {
+            const url = document.getElementById('w-link').value.trim();
+            if (url && url !== "#" && url !== "") {
+                window.open(url, '_blank');
+            } else {
+                alert("Nessun link valido inserito in questo campo.");
+            }
+        }
 
         // Avviso anti-chiusura accidentale della pagina
         window.addEventListener('beforeunload', function (e) {
@@ -286,16 +344,13 @@
                     indiceCorrente = 0;
                     datiFinalizzatiPerDB = [];
                     
-                    // Salva un backup iniziale nel browser
                     salvaBackupLocale();
 
-                    // Nascondi inserimento e mostra Wizard
                     document.getElementById('sezione-inserimento').style.display = "none";
                     document.getElementById('sezione-wizard').style.display = "block";
                     
                     mostraElementoWizard(indiceCorrente);
                     
-                    // Svuota lista inserimento vecchio
                     elencoCarte = [];
                     document.getElementById('elenco-temporaneo').innerHTML = "";
                     document.getElementById('badge-conteggio').innerText = "0";
@@ -316,11 +371,9 @@
             
             const item = risultatiElaborati[indice];
             
-            // Imposta titolo e contatore progresso
             document.getElementById('wizard-entry-corrente').innerText = `Verifica per: "${item.entry}"`;
             document.getElementById('wizard-indice-progresso').innerText = `Elemento ${indice + 1} di ${risultatiElaborati.length}`;
             
-            // Imposta badge di stato
             const badge = document.getElementById('wizard-badge-stato');
             badge.innerText = item.stato;
             if(item.stato === "Trovato nel DB") {
@@ -329,17 +382,28 @@
                 badge.className = "badge-stato stato-fallback";
             }
             
-            // Popola i campi input modificabili
             document.getElementById('w-nome').value = item.dati.nome || "";
             document.getElementById('w-codice').value = item.dati.codice || "";
             document.getElementById('w-lingua').value = item.dati.lingua || "";
             document.getElementById('w-condiz').value = item.dati.condiz || "";
-            document.getElementById('w-link').value = item.dati.link || "";
+            
+            // Gestione Link testo e ancora dinamica
+            const urlCorrente = item.dati.link || "";
+            const inputLink = document.getElementById('w-link');
+            const btnLink = document.getElementById('btn-link-cliccabile');
+            
+            inputLink.value = urlCorrente;
+            btnLink.href = urlCorrente && urlCorrente.startsWith('http') ? urlCorrente : "#";
+            
+            // Aggiorna dinamicamente il pulsante se l'utente modifica l'input a mano
+            inputLink.oninput = function() {
+                btnLink.href = this.value.trim().startsWith('http') ? this.value.trim() : "#";
+            };
+
             document.getElementById('w-prezzo').value = item.dati.prezzo || "";
             document.getElementById('w-note').value = item.dati.note || "";
             document.getElementById('w-proprietario').value = item.dati.proprietario || "";
 
-            // Cambia testo pulsante all'ultimo elemento
             const btn = document.getElementById('btn-wizard-avanti');
             if (indice === risultatiElaborati.length - 1) {
                 btn.innerText = "Finalizza e Salva su Foglio Google 💾";
@@ -351,7 +415,6 @@
         }
 
         function wizardAvanti() {
-            // Raccogli i dati correnti (compresi i cambiamenti fatti dall'utente)
             const rigaCompilata = {
                 nome: document.getElementById('w-nome').value.trim(),
                 codice: document.getElementById('w-codice').value.trim(),
@@ -363,17 +426,14 @@
                 proprietario: document.getElementById('w-proprietario').value.trim()
             };
             
-            // Salva nella nostra lista temporanea
             datiFinalizzatiPerDB.push(rigaCompilata);
             
             indiceCorrente++;
-            salvaBackupLocale(); // Aggiorna il salvataggio di sicurezza nel browser
+            salvaBackupLocale();
             
             if (indiceCorrente < risultatiElaborati.length) {
-                // Passa alla riga successiva
                 mostraElementoWizard(indiceCorrente);
             } else {
-                // Abbiamo finito tutte le righe, inviamo il blocco totale a Google
                 inviaDatiFinaliAGoogle();
             }
         }
@@ -401,13 +461,11 @@
                     notifica.style.color = "#155724";
                     notifica.innerHTML = "🎉 <strong>my job here is done!</strong><br>Tutti i dati controllati sono stati salvati correttamente.";
                     
-                    // Pulizia totale
                     pulisciBackupLocale();
                     risultatiElaborati = [];
                     datiFinalizzatiPerDB = [];
                     indiceCorrente = 0;
                     
-                    // Riattiviamo la schermata di inserimento dopo 5 secondi per una nuova sessione
                     setTimeout(() => {
                         notifica.style.display = "none";
                         document.getElementById('sezione-inserimento').style.display = "block";
@@ -421,7 +479,6 @@
                 notifica.style.background = "#f8d7da";
                 notifica.style.color = "#721c24";
                 notifica.innerText = "❌ Errore durante il salvataggio finale a DB: " + error.message + ". Ricarica la pagina per riprovare, i tuoi progressi sono al sicuro.";
-                // Decrementiamo l'indice così se ricarica riparte dall'ultimo invio fallito
                 indiceCorrente--;
                 salvaBackupLocale();
             }
