@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Inserimento Pokémon & Controllo Guidato</title>
+    <title>Inserimento Pokémon &amp; Controllo Guidato</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -111,7 +111,11 @@
         .contatore { float: right; background: #007bff; color: white; padding: 2px 8px; border-radius: 20px; font-size: 0.8em; }
         .stato-notifica { margin-bottom: 20px; padding: 15px; border-radius: 8px; display: none; font-weight: bold; text-align: center; }
 
+        /* Blocchi sezioni */
+        #sezione-login { display: block; }
+        #sezione-inserimento { display: none; }
         .wizard-container { display: none; }
+        
         .wizard-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; }
         .wizard-title { font-size: 1.3em; margin: 0; color: #333; }
         .wizard-progresso { font-weight: bold; color: #007bff; background: #e6f2ff; padding: 4px 10px; border-radius: 15px; font-size: 0.9em; }
@@ -123,6 +127,8 @@
         .grid-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         @media (max-width: 600px) { .grid-campi { grid-template-columns: 1fr; } }
         .wizard-footer { display: flex; justify-content: flex-end; border-top: 2px solid #f0f0f0; padding-top: 15px; margin-top: 20px; }
+        
+        .info-utente-corrente { text-align: right; font-size: 0.9em; color: #6c757d; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -131,11 +137,26 @@
     
     <div id="notifica" class="stato-notifica"></div>
 
+    <!-- FASE 0: CHI SEI? -->
+    <div id="sezione-login">
+        <div class="box-standard" style="text-align: center;">
+            <div class="input-group">
+                <label for="select-utente-iniziale" style="font-size: 1.2em; margin-bottom: 10px;">Chi sei?</label>
+                <select id="select-utente-iniziale">
+                    <option value="">Caricamento nomi in corso...</option>
+                </select>
+            </div>
+            <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="confermaUtente()">Inizia Sessione 🚀</button>
+        </div>
+    </div>
+
+    <!-- FASE 1: INSERIMENTO TEXT -->
     <div id="sezione-inserimento">
+        <div class="info-utente-corrente">Utente attivo: <span id="label-utente-attivo" style="color:#007bff;">-</span></div>
         <div class="box-standard">
             <div class="input-group">
                 <label for="input-testo">Digita il testo della carta e premi Invio:</label>
-                <input type="text" id="input-testo" placeholder="Inserisci il testo qui..." autofocus>
+                <input type="text" id="input-testo" placeholder="Inserisci il testo qui...">
             </div>
             <button class="btn-green" onclick="avviaVerificaDati()">Fase di inserimento terminata e verifica DB</button>
         </div>
@@ -146,6 +167,7 @@
         </div>
     </div>
 
+    <!-- FASE 2: WIZARD POPUP COMPILAZIONE -->
     <div id="sezione-wizard" class="wizard-container">
         <div class="wizard-card">
             <div class="wizard-header">
@@ -155,6 +177,7 @@
             
             <div id="wizard-badge-stato" class="badge-stato">Stato</div>
 
+            <!-- CONTENITORE SELETTORE DINAMICO PER MULTIPLE CORRISPONDENZE -->
             <div id="box-duplicati" class="container-selettore-duplicati">
                 <label for="select-varianti">⚠️ Rilevate più corrispondenze nel DB! Scegli quale usare:</label>
                 <select id="select-varianti" onchange="cambiaVarianteSelezionata(this.value)"></select>
@@ -210,6 +233,7 @@
         let risultatiElaborati = [];
         let indiceCorrente = 0;
         let datiFinalizzatiPerDB = [];
+        let utenteSelezionato = "";
         
         const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyk9JIavd03rNPWNXsZbb88Lik2W6BhkTHrE0cs4JxHdgV5sfqRByu3fM61XQFk4_21ww/exec";
 
@@ -239,12 +263,17 @@
         });
 
         window.addEventListener('load', function() {
+            // Carica la lista dei nomi all'avvio del sito
+            caricaListaNomiIniziale();
+
             if(localStorage.getItem('wizard_backup_risultati')) {
-                if(confirm("È stato trovato un lavoro di verifica non completato. Vuoi riprendere da dove avevi lasciato?")) {
+                if(confirm("È stato trovato un lavoro di verifica non completato. Vuoi riprendere da dare avevi lasciato?")) {
                     risultatiElaborati = JSON.parse(localStorage.getItem('wizard_backup_risultati'));
                     indiceCorrente = parseInt(localStorage.getItem('wizard_backup_indice')) || 0;
                     datiFinalizzatiPerDB = JSON.parse(localStorage.getItem('wizard_backup_dati_salvati')) || [];
+                    utenteSelezionato = localStorage.getItem('wizard_backup_utente') || "";
                     
+                    document.getElementById('sezione-login').style.display = "none";
                     document.getElementById('sezione-inserimento').style.display = "none";
                     document.getElementById('sezione-wizard').style.display = "block";
                     mostraElementoWizard(indiceCorrente);
@@ -253,6 +282,44 @@
                 }
             }
         });
+
+        async function caricaListaNomiIniziale() {
+            try {
+                const response = await fetch(URL_API_GOOGLE, {
+                    method: 'POST',
+                    body: JSON.stringify({ azione: "prendi_nomi" })
+                });
+                const risposta = JSON.parse(await response.text());
+                if (risposta.success) {
+                    const select = document.getElementById('select-utente-iniziale');
+                    select.innerHTML = '<option value="">-- Seleziona il tuo nome --</option>';
+                    risposta.nomi.forEach(nome => {
+                        const opt = document.createElement('option');
+                        opt.value = nome;
+                        opt.innerText = nome;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error("Errore caricamento nomi:", err);
+                document.getElementById('select-utente-iniziale').innerHTML = '<option value="">Errore nel caricamento dei nomi</option>';
+            }
+        }
+
+        function confermaUtente() {
+            const select = document.getElementById('select-utente-iniziale');
+            if (select.value === "") {
+                alert("Devi selezionare il tuo nome prima di procedere!");
+                return;
+            }
+            utenteSelezionato = select.value;
+            localStorage.setItem('wizard_backup_utente', utenteSelezionato);
+            
+            document.getElementById('label-utente-attivo').innerText = utenteSelezionato;
+            document.getElementById('sezione-login').style.display = "none";
+            document.getElementById('sezione-inserimento').style.display = "block";
+            document.getElementById('input-testo').focus();
+        }
 
         document.getElementById('input-testo').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') { aggiungiCarta(); }
@@ -340,7 +407,6 @@
                 badge.className = "badge-stato stato-fallback";
             }
             
-            // Gestione Menu a Tendina Varianti Duplicate
             const boxDuplicati = document.getElementById('box-duplicati');
             const selectVarianti = document.getElementById('select-varianti');
             selectVarianti.innerHTML = ""; 
@@ -348,7 +414,6 @@
             if (item.oppureScegli && item.oppureScegli.length > 1) {
                 boxDuplicati.style.display = "block";
                 
-                // Popoliamo la tendina con Lingua, Condizione e Note
                 item.oppureScegli.forEach((variante, idx) => {
                     const opt = document.createElement('option');
                     opt.value = idx;
@@ -360,7 +425,6 @@
                     selectVarianti.appendChild(opt);
                 });
                 
-                // Opzione Extra: "Nessuna di queste"
                 const optNessuna = document.createElement('option');
                 optNessuna.value = "nessuna";
                 optNessuna.innerText = "❌ Nessuna di queste";
@@ -370,7 +434,6 @@
                 boxDuplicati.style.display = "none";
             }
 
-            // Di default carica la prima variante (indice 0)
             caricaCampiInput(item.oppureScegli[0]);
 
             const btn = document.getElementById('btn-wizard-avanti');
@@ -386,21 +449,19 @@
         function cambiaVarianteSelezionata(valore) {
             const item = risultatiElaborati[indiceCorrente];
             if (valore === "nessuna") {
-                // Svuota tutto tranne Codice e imposta il Link di fallback
                 document.getElementById('w-nome').value = "";
                 document.getElementById('w-codice').value = item.entry;
                 document.getElementById('w-lingua').value = "";
                 document.getElementById('w-condiz').value = "";
                 document.getElementById('w-prezzo').value = "";
                 document.getElementById('w-note').value = "";
-                document.getElementById('w-proprietario').value = "";
+                document.getElementById('w-proprietario').value = utenteSelezionato; // Mantiene l'utente selezionato all'inizio
                 
                 const inputLink = document.getElementById('w-link');
                 const btnLink = document.getElementById('btn-link-cliccabile');
                 inputLink.value = item.linkFallback || "";
                 btnLink.href = item.linkFallback && item.linkFallback.startsWith('http') ? item.linkFallback : "#";
             } else {
-                // Carica la variante scelta dal DB
                 caricaCampiInput(item.oppureScegli[parseInt(valore)]);
             }
         }
@@ -412,7 +473,9 @@
             document.getElementById('w-condiz').value = datiVariante.condiz || "";
             document.getElementById('w-prezzo').value = datiVariante.prezzo || "";
             document.getElementById('w-note').value = datiVariante.note || "";
-            document.getElementById('w-proprietario').value = datiVariante.proprietario || "";
+            
+            // SOVRASCRITTURA FORZATA: Usa l'utente selezionato all'inizio invece dei dati del database
+            document.getElementById('w-proprietario').value = utenteSelezionato; 
             
             const urlCorrente = datiVariante.link || "";
             const inputLink = document.getElementById('w-link');
@@ -478,6 +541,7 @@
                     
                     setTimeout(() => {
                         notifica.style.display = "none";
+                        // Torna alla schermata di inserimento mantenendo lo stesso utente loggato
                         document.getElementById('sezione-inserimento').style.display = "block";
                     }, 5000);
                 } else {
@@ -497,12 +561,16 @@
             localStorage.setItem('wizard_backup_risultati', JSON.stringify(risultatiElaborati));
             localStorage.setItem('wizard_backup_indice', indiceCorrente);
             localStorage.setItem('wizard_backup_dati_salvati', JSON.stringify(datiFinalizzatiPerDB));
+            localStorage.setItem('wizard_backup_utente', utenteSelezionato);
         }
 
         function pulisciBackupLocale() {
             localStorage.removeItem('wizard_backup_risultati');
             localStorage.removeItem('wizard_backup_indice');
             localStorage.removeItem('wizard_backup_dati_salvati');
+            // Manteniamo volutamente l'utente memorizzato se si rinfresca la pagina per errore, 
+            // ma l'utente viene azzerato solo se si decide di scartare il backup.
+            localStorage.removeItem('wizard_backup_utente');
         }
     </script>
 </body>
