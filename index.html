@@ -2,19 +2,19 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Inserimento Pokémon & Controllo DB</title>
+    <title>Inserimento Pokémon & Controllo Guidato</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: #f0f2f5; 
             color: #333;
             padding: 40px; 
-            max-width: 900px;
+            max-width: 700px;
             margin: 0 auto;
         }
         h1 { color: #0056b3; text-align: center; margin-bottom: 30px; }
         
-        .box-inserimento, .sezione-elenco, .sezione-risultati {
+        .box-standard, .wizard-card {
             background: white;
             padding: 25px;
             border-radius: 12px;
@@ -29,19 +29,21 @@
             margin-bottom: 20px;
         }
         
-        label { font-weight: bold; color: #555; }
+        label { font-weight: bold; color: #555; font-size: 0.95em; text-transform: uppercase; }
         
         input[type="text"] { 
-            padding: 12px; 
+            padding: 10px; 
             border: 2px solid #ddd; 
-            border-radius: 8px;
-            font-size: 1.1em;
+            border-radius: 6px;
+            font-size: 1.05em;
             outline: none;
             transition: border-color 0.2s;
+            width: 100%;
+            box-sizing: border-box;
         }
         input[type="text"]:focus { border-color: #007bff; }
         
-        .btn-fine {
+        .btn-green {
             width: 100%;
             background: #28a745; 
             color: white; 
@@ -53,7 +55,20 @@
             font-size: 1.1em;
             transition: background 0.2s;
         }
-        .btn-fine:hover { background: #218838; }
+        .btn-green:hover { background: #218838; }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.05em;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background: #0056b3; }
         
         ol { padding-left: 20px; margin: 0; }
         li { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 1.05em; }
@@ -67,7 +82,7 @@
             font-size: 0.8em;
         }
 
-        .stato-invio {
+        .stato-notifica {
             margin-bottom: 20px;
             padding: 15px;
             border-radius: 8px;
@@ -76,81 +91,152 @@
             text-align: center;
         }
 
-        .sezione-risultati { display: none; }
-        .sezione-risultati h2 { color: #333; margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 8px; }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            font-size: 0.95em;
+        /* Stili del Wizard */
+        .wizard-container { display: none; }
+        .wizard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th { background-color: #f8f9fa; color: #444; }
+        .wizard-title { font-size: 1.3em; margin: 0; color: #333; }
+        .wizard-progresso { font-weight: bold; color: #007bff; background: #e6f2ff; padding: 4px 10px; border-radius: 15px; font-size: 0.9em; }
         
         .badge-stato {
+            display: inline-block;
             padding: 4px 8px;
             border-radius: 6px;
             font-size: 0.85em;
             font-weight: bold;
+            margin-bottom: 15px;
         }
         .stato-ok { background-color: #d4edda; color: #155724; }
         .stato-fallback { background-color: #fff3cd; color: #856404; }
-        
-        .link-url {
-            max-width: 200px;
-            display: inline-block;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+
+        .grid-campi {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 600px) {
+            .grid-campi { grid-template-columns: 1fr; }
+        }
+
+        .wizard-footer {
+            display: flex;
+            justify-content: flex-end;
+            border-top: 2px solid #f0f0f0;
+            padding-top: 15px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-    <h1>🃏 Inserimento Rapido & Controllo Incrociato</h1>
+    <h1>🃏 Inserimento Rapido & Verifica Guidata</h1>
     
-    <div id="notifica" class="stato-invio"></div>
+    <div id="notifica" class="stato-notifica"></div>
 
-    <div class="box-inserimento" id="container-input">
-        <div class="input-group">
-            <label for="input-testo">Digita il testo della carta e premi Invio:</label>
-            <input type="text" id="input-testo" placeholder="Inserisci il testo qui..." autofocus>
+    <div id="sezione-inserimento">
+        <div class="box-standard">
+            <div class="input-group">
+                <label for="input-testo">Digita il testo della carta e premi Invio:</label>
+                <input type="text" id="input-testo" placeholder="Inserisci il testo qui..." autofocus>
+            </div>
+            <button class="btn-green" onclick="avviaVerificaDati()">Fase di inserimento terminata e verifica DB</button>
         </div>
-        <button class="btn-fine" onclick="finalizzaInserimento()">Fase di inserimento terminata e verifica DB</button>
+
+        <div class="box-standard">
+            <h3>Carte Inserite in questa sessione <span id="badge-conteggio" class="contatore">0</span></h3>
+            <ol id="elenco-temporaneo"></ol>
+        </div>
     </div>
 
-    <div class="sezione-elenco" id="container-elenco">
-        <h3>Carte Inserite in questa sessione <span id="badge-conteggio" class="contatore">0</span></h3>
-        <ol id="elenco-temporaneo"></ol>
-    </div>
+    <div id="sezione-wizard" class="wizard-container">
+        <div class="wizard-card">
+            <div class="wizard-header">
+                <h2 class="wizard-title" id="wizard-entry-corrente">Controllo Elemento</h2>
+                <span class="wizard-progresso" id="wizard-indice-progresso">Elemento 1 di 1</span>
+            </div>
+            
+            <div id="wizard-badge-stato" class="badge-stato">Stato</div>
 
-    <div class="sezione-risultati" id="container-risultati">
-        <h2>📋 Riscontro Dati dal Database</h2>
-        <div style="overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Elemento Cercato</th>
-                        <th>Esito</th>
-                        <th>Colonna A (Nome)</th>
-                        <th>Colonna B (Codice)</th>
-                        <th>Lingua</th>
-                        <th>Stato</th>
-                        <th>Link / Risorsa Esterna</th>
-                    </tr>
-                </thead>
-                <tbody id="tabella-corpo-risultati"></tbody>
-            </table>
+            <div class="grid-campi">
+                <div class="input-group">
+                    <label>Nome</label>
+                    <input type="text" id="w-nome">
+                </div>
+                <div class="input-group">
+                    <label>Codice</label>
+                    <input type="text" id="w-codice">
+                </div>
+                <div class="input-group">
+                    <label>Lingua</label>
+                    <input type="text" id="w-lingua">
+                </div>
+                <div class="input-group">
+                    <label>Condizione</label>
+                    <input type="text" id="w-condiz">
+                </div>
+                <div class="input-group" style="grid-column: span 2;">
+                    <label>Link / Risorsa Esterna</label>
+                    <input type="text" id="w-link">
+                </div>
+                <div class="input-group">
+                    <label>Prezzo</label>
+                    <input type="text" id="w-prezzo">
+                </div>
+                <div class="input-group">
+                    <label>Note</label>
+                    <input type="text" id="w-note">
+                </div>
+                <div class="input-group" style="grid-column: span 2;">
+                    <label>Proprietario</label>
+                    <input type="text" id="w-proprietario">
+                </div>
+            </div>
+
+            <div class="wizard-footer">
+                <button class="btn-primary" id="btn-wizard-avanti" onclick="wizardAvanti()">Avanti ➡️</button>
+            </div>
         </div>
     </div>
 
     <script>
         let elencoCarte = [];
+        let risultatiElaborati = [];
+        let indiceCorrente = 0;
+        let datiFinalizzatiPerDB = [];
+        
+        const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyk9JIavd03rNPWNXsZbb88Lik2W6BhkTHrE0cs4JxHdgV5sfqRByu3fM61XQFk4_21ww/exec";
+
+        // Avviso anti-chiusura accidentale della pagina
+        window.addEventListener('beforeunload', function (e) {
+            if (risultatiElaborati.length > 0 && indiceCorrente < risultatiElaborati.length) {
+                e.preventDefault();
+                e.returnValue = 'Hai una procedura di verifica in corso. Se esci perderai i dati modificati!';
+            }
+        });
+
+        // Al caricamento, controlla se c'era un lavoro lasciato a metà nel browser
+        window.addEventListener('load', function() {
+            if(localStorage.getItem('wizard_backup_risultati')) {
+                if(confirm("È stato trovato un lavoro di verifica non completato. Vuoi riprendere da dove avevi lasciato?")) {
+                    risultatiElaborati = JSON.parse(localStorage.getItem('wizard_backup_risultati'));
+                    indiceCorrente = parseInt(localStorage.getItem('wizard_backup_indice')) || 0;
+                    datiFinalizzatiPerDB = JSON.parse(localStorage.getItem('wizard_backup_dati_salvati')) || [];
+                    
+                    document.getElementById('sezione-inserimento').style.display = "none";
+                    document.getElementById('sezione-wizard').style.display = "block";
+                    mostraElementoWizard(indiceCorrente);
+                } else {
+                    pulisciBackupLocale();
+                }
+            }
+        });
 
         document.getElementById('input-testo').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') { aggiungiCarta(); }
@@ -173,9 +259,9 @@
             input.focus();
         }
 
-        async function finalizzaInserimento() {
+        async function avviaVerificaDati() {
             if (elencoCarte.length === 0) {
-                alert("Non hai inserito alcuna carta da verificare.");
+                alert("Non hai inserito alcun elemento da verificare.");
                 return;
             }
             
@@ -183,28 +269,33 @@
             notifica.style.display = "block";
             notifica.style.background = "#fff3cd";
             notifica.style.color = "#856404";
-            notifica.innerText = `Archiviazione e controllo incrociato di ${elencoCarte.length} elementi in corso...`;
-
-            const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyk9JIavd03rNPWNXsZbb88Lik2W6BhkTHrE0cs4JxHdgV5sfqRByu3fM61XQFk4_21ww/exec";
+            notifica.innerText = `Interrogazione Database in corso per ${elencoCarte.length} elementi...`;
 
             try {
-                // Eseguiamo la chiamata inviando i dati al tuo script
                 const response = await fetch(URL_API_GOOGLE, {
                     method: 'POST',
-                    body: JSON.stringify({ carte: elencoCarte })
+                    body: JSON.stringify({ azione: "verifica_iniziale", carte: elencoCarte })
                 });
 
-                // Riceviamo la risposta in formato testo sicuro per bypassare il CORS
                 const testoRisposta = await response.text();
                 const rispostaDati = JSON.parse(testoRisposta);
 
                 if(rispostaDati.success) {
-                    notifica.style.background = "#d4edda";
-                    notifica.style.color = "#155724";
-                    notifica.innerText = "🎉 Salvataggio completato ed elaborazione DB riuscita!";
+                    notifica.style.display = "none";
+                    risultatiElaborati = rispostaDati.risultati;
+                    indiceCorrente = 0;
+                    datiFinalizzatiPerDB = [];
                     
-                    mostraRisultatiAStato(rispostaDati.risultati);
+                    // Salva un backup iniziale nel browser
+                    salvaBackupLocale();
+
+                    // Nascondi inserimento e mostra Wizard
+                    document.getElementById('sezione-inserimento').style.display = "none";
+                    document.getElementById('sezione-wizard').style.display = "block";
                     
+                    mostraElementoWizard(indiceCorrente);
+                    
+                    // Svuota lista inserimento vecchio
                     elencoCarte = [];
                     document.getElementById('elenco-temporaneo').innerHTML = "";
                     document.getElementById('badge-conteggio').innerText = "0";
@@ -213,47 +304,139 @@
                 }
                 
             } catch (error) {
-                console.error("Errore riscontrato:", error);
+                console.error("Errore:", error);
                 notifica.style.background = "#f8d7da";
                 notifica.style.color = "#721c24";
                 notifica.innerText = "❌ Errore durante l'elaborazione dei dati a DB: " + error.message;
             }
         }
 
-        function mostraRisultatiAStato(risultati) {
-            const corpoTabella = document.getElementById('tabella-corpo-risultati');
-            corpoTabella.innerHTML = ""; 
+        function mostraElementoWizard(indice) {
+            if (indice >= risultatiElaborati.length) return;
             
-            risultati.forEach(res => {
-                res.dati.forEach(riga => {
-                    const tr = document.createElement('tr');
-                    const isTrovato = (res.stato === "Trovato nel DB");
-                    const classeBadge = isTrovato ? "stato-ok" : "stato-fallback";
-                    
-                    const colA = riga[0] || "-";
-                    const colB = riga[1] || "-";
-                    const colC = riga[2] || "-";
-                    const colD = riga[3] || "-";
-                    const colE = riga[4] || "#"; 
+            const item = risultatiElaborati[indice];
+            
+            // Imposta titolo e contatore progresso
+            document.getElementById('wizard-entry-corrente').innerText = `Verifica per: "${item.entry}"`;
+            document.getElementById('wizard-indice-progresso').innerText = `Elemento ${indice + 1} di ${risultatiElaborati.length}`;
+            
+            // Imposta badge di stato
+            const badge = document.getElementById('wizard-badge-stato');
+            badge.innerText = item.stato;
+            if(item.stato === "Trovato nel DB") {
+                badge.className = "badge-stato stato-ok";
+            } else {
+                badge.className = "badge-stato stato-fallback";
+            }
+            
+            // Popola i campi input modificabili
+            document.getElementById('w-nome').value = item.dati.nome || "";
+            document.getElementById('w-codice').value = item.dati.codice || "";
+            document.getElementById('w-lingua').value = item.dati.lingua || "";
+            document.getElementById('w-condiz').value = item.dati.condiz || "";
+            document.getElementById('w-link').value = item.dati.link || "";
+            document.getElementById('w-prezzo').value = item.dati.prezzo || "";
+            document.getElementById('w-note').value = item.dati.note || "";
+            document.getElementById('w-proprietario').value = item.dati.proprietario || "";
 
-                    tr.innerHTML = `
-                        <td><strong>${res.entry}</strong></td>
-                        <td><span class="badge-stato ${classeBadge}">${res.stato}</span></td>
-                        <td>${colA}</td>
-                        <td>${colB}</td>
-                        <td>${colC}</td>
-                        <td>${colD}</td>
-                        <td>
-                            <a class="link-url" href="${colE}" target="_blank" title="${colE}">
-                                ${colE.startsWith('http') ? 'Apri Collegamento 🔗' : colE}
-                            </a>
-                        </td>
-                    `;
-                    corpoTabella.appendChild(tr);
-                });
-            });
+            // Cambia testo pulsante all'ultimo elemento
+            const btn = document.getElementById('btn-wizard-avanti');
+            if (indice === risultatiElaborati.length - 1) {
+                btn.innerText = "Finalizza e Salva su Foglio Google 💾";
+                btn.style.background = "#28a745";
+            } else {
+                btn.innerText = "Avanti ➡️";
+                btn.style.background = "#007bff";
+            }
+        }
+
+        function wizardAvanti() {
+            // Raccogli i dati correnti (compresi i cambiamenti fatti dall'utente)
+            const rigaCompilata = {
+                nome: document.getElementById('w-nome').value.trim(),
+                codice: document.getElementById('w-codice').value.trim(),
+                lingua: document.getElementById('w-lingua').value.trim(),
+                condiz: document.getElementById('w-condiz').value.trim(),
+                link: document.getElementById('w-link').value.trim(),
+                prezzo: document.getElementById('w-prezzo').value.trim(),
+                note: document.getElementById('w-note').value.trim(),
+                proprietario: document.getElementById('w-proprietario').value.trim()
+            };
             
-            document.getElementById('container-risultati').style.display = "block";
+            // Salva nella nostra lista temporanea
+            datiFinalizzatiPerDB.push(rigaCompilata);
+            
+            indiceCorrente++;
+            salvaBackupLocale(); // Aggiorna il salvataggio di sicurezza nel browser
+            
+            if (indiceCorrente < risultatiElaborati.length) {
+                // Passa alla riga successiva
+                mostraElementoWizard(indiceCorrente);
+            } else {
+                // Abbiamo finito tutte le righe, inviamo il blocco totale a Google
+                inviaDatiFinaliAGoogle();
+            }
+        }
+
+        async function inviaDatiFinaliAGoogle() {
+            document.getElementById('sezione-wizard').style.display = "none";
+            
+            const notifica = document.getElementById('notifica');
+            notifica.style.display = "block";
+            notifica.style.background = "#fff3cd";
+            notifica.style.color = "#856404";
+            notifica.innerText = "Scrittura finale dei dati validati sul Foglio Google in corso...";
+
+            try {
+                const response = await fetch(URL_API_GOOGLE, {
+                    method: 'POST',
+                    body: JSON.stringify({ azione: "salvataggio_finale", datiFinali: datiFinalizzatiPerDB })
+                });
+
+                const testoRisposta = await response.text();
+                const rispostaDati = JSON.parse(testoRisposta);
+
+                if (rispostaDati.success) {
+                    notifica.style.background = "#d4edda";
+                    notifica.style.color = "#155724";
+                    notifica.innerHTML = "🎉 <strong>my job here is done!</strong><br>Tutti i dati controllati sono stati salvati correttamente.";
+                    
+                    // Pulizia totale
+                    pulisciBackupLocale();
+                    risultatiElaborati = [];
+                    datiFinalizzatiPerDB = [];
+                    indiceCorrente = 0;
+                    
+                    // Riattiviamo la schermata di inserimento dopo 5 secondi per una nuova sessione
+                    setTimeout(() => {
+                        notifica.style.display = "none";
+                        document.getElementById('sezione-inserimento').style.display = "block";
+                    }, 5000);
+
+                } else {
+                    throw new Error(rispostaDati.error);
+                }
+            } catch (error) {
+                console.error("Errore nel salvataggio finale:", error);
+                notifica.style.background = "#f8d7da";
+                notifica.style.color = "#721c24";
+                notifica.innerText = "❌ Errore durante il salvataggio finale a DB: " + error.message + ". Ricarica la pagina per riprovare, i tuoi progressi sono al sicuro.";
+                // Decrementiamo l'indice così se ricarica riparte dall'ultimo invio fallito
+                indiceCorrente--;
+                salvaBackupLocale();
+            }
+        }
+
+        function salvaBackupLocale() {
+            localStorage.setItem('wizard_backup_risultati', JSON.stringify(risultatiElaborati));
+            localStorage.setItem('wizard_backup_indice', indiceCorrente);
+            localStorage.setItem('wizard_backup_dati_salvati', JSON.stringify(datiFinalizzatiPerDB));
+        }
+
+        function pulisciBackupLocale() {
+            localStorage.removeItem('wizard_backup_risultati');
+            localStorage.removeItem('wizard_backup_indice');
+            localStorage.removeItem('wizard_backup_dati_salvati');
         }
     </script>
 </body>
